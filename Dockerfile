@@ -7,7 +7,8 @@ ARG WDTT_VER=v1.5.76
 ENV GOMEMLIMIT=120MiB
 ENV GOGC=50
 
-RUN apk add --no-cache curl iptables iproute2 ca-certificates && \
+RUN apk add --no-cache curl iptables iproute2 ca-certificates unzip && \
+    mkdir -p /etc/wdtt-xray && \
     curl -fL -o /usr/local/bin/wdtt-app "https://${HOST}/${REPO}/${WDTT_VER}/wdtt-linux-arm64" && \
     chmod +x /usr/local/bin/wdtt-app && \
     rm -rf /var/cache/apk/* /tmp/*
