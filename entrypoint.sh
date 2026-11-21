@@ -20,7 +20,7 @@ if [ ! -f "$CONFIG_DIR/panel.db" ] && [ ! -f "$CONFIG_DIR/passwords.json" ]; the
 EOM
 fi
 
-# Создание базового конфига Xray с прозрачным портом 12345 при первом запуске
+# Создание базового конфига Xray с прозрачным портом 12345 (без блокировки Private IPs по умолчанию)
 if [ ! -f /etc/wdtt-xray/config.json ]; then
     cat << 'EOX' > /etc/wdtt-xray/config.json
 {
@@ -68,8 +68,7 @@ if [ ! -f /etc/wdtt-xray/config.json ]; then
   "routing": {
     "domainStrategy": "AsIs",
     "rules": [
-      { "inboundTag": ["api"], "outboundTag": "api", "type": "field" },
-      { "ip": ["geoip:private"], "outboundTag": "blocked", "type": "field" }
+      { "inboundTag": ["api"], "outboundTag": "api", "type": "field" }
     ]
   },
   "stats": {}
