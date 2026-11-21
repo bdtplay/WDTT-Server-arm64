@@ -6,37 +6,66 @@ API="127.0.0.1:2861"
 
 case "$ACTION" in
   is-active)
-    if curl -sf "http://${API}/health" >/dev/null 2>&1 || pgrep -f "wdtt-app" >/dev/null 2>&1; then
-      echo "active"
-      exit 0
-    else
-      echo "inactive"
-      exit 3
-    fi
+    case "$SERVICE" in
+      *xray*)
+        if pgrep -x "xray" >/dev/null 2>&1; then
+          echo "active"
+          exit 0
+        else
+          echo "inactive"
+          exit 3
+        fi
+        ;;
+      *)
+        if curl -sf "http://${API}/health" >/dev/null 2>&1 || pgrep -f "wdtt-app" >/dev/null 2>&1; then
+          echo "active"
+          exit 0
+        else
+          echo "inactive"
+          exit 3
+        fi
+        ;;
+    esac
     ;;
 
   restart|reload)
-    if curl -sf -X POST "http://${API}/admin/restart" >/dev/null 2>&1; then
-      exit 0
-    fi
-    killall -TERM wdtt-app 2>/dev/null || true
-    exit 0
+    case "$SERVICE" in
+      *xray*)
+        exit 0
+        ;;
+      *)
+        if curl -sf -X POST "http://${API}/admin/restart" >/dev/null 2>&1; then
+          exit 0
+        fi
+        killall -TERM wdtt-app 2>/dev/null || true
+        exit 0
+        ;;
+    esac
     ;;
 
   status)
-    if pgrep -f "wdtt-app" >/dev/null 2>&1; then
-      echo "● wdtt.service - WDTT Server (Alpine wrapper)"
-      echo "   Active: active (running)"
-      exit 0
-    else
-      echo "● wdtt.service - WDTT Server (Alpine wrapper)"
-      echo "   Active: inactive (dead)"
-      exit 3
-    fi
-    ;;
-
-  start|stop|enable|disable)
-    exit 0
+    case "$SERVICE" in
+      *xray*)
+        if pgrep -x "xray" >/dev/null 2>&1; then
+          echo "Active: active (running)"
+          exit 0
+        else
+          echo "Active: inactive (dead)"
+          exit 3
+        fi
+        ;;
+      *)
+        if pgrep -f "wdtt-app" >/dev/null 2>&1; then
+          echo "● wdtt.service - WDTT Server (Alpine wrapper)"
+          echo "   Active: active (running)"
+          exit 0
+        else
+          echo "● wdtt.service - WDTT Server (Alpine wrapper)"
+          echo "   Active: inactive (dead)"
+          exit 3
+        fi
+        ;;
+    esac
     ;;
 
   *)
