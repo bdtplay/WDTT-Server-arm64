@@ -3,15 +3,31 @@
 ACTION="$1"
 SERVICE="$2"
 API="127.0.0.1:2861"
+XRAY_BIN="/usr/local/wdtt-xray/bin/xray"
+XRAY_CFG="/etc/wdtt-xray/config.json"
+
+enable_xray_redirect() {
+  iptables -t nat -C PREROUTING -s 10.66.66.0/24 -p tcp -j REDIRECT --to-ports 12345 2>/dev/null || \
+  iptables -t nat -A PREROUTING -s 10.66.66.0/24 -p tcp -j REDIRECT --to-ports 12345
+  iptables -t nat -C PREROUTING -s 10.70.0.0/16 -p tcp -j REDIRECT --to-ports 12345 2>/dev/null || \
+  iptables -t nat -A PREROUTING -s 10.70.0.0/16 -p tcp -j REDIRECT --to-ports 12345
+  iptables -C INPUT -p tcp --dport 12345 -j ACCEPT 2>/dev/null || \
+  iptables -I INPUT -p tcp --dport 12345 -j ACCEPT
+}
+
+disable_xray_redirect() {
+  iptables -t nat -D PREROUTING -s 10.66.66.0/24 -p tcp -j REDIRECT --to-ports 12345 2>/dev/null || true
+  iptables -t nat -D PREROUTING -s 10.70.0.0/16 -p tcp -j REDIRECT --to-ports 12345 2>/dev/null || true
+}
 
 start_xray() {
   killall -TERM xray 2>/dev/null || true
   sleep 1
-  XRAY_BIN=$(command -v xray || find /usr /etc /opt -name "xray" -type f 2>/dev/null | head -n 1)
-  XRAY_CFG=$(find /etc/wdtt-xray /etc/wdtt /usr/local/etc/xray -name "*.json" -type f 2>/dev/null | head -n 1)
-  if [ -n "$XRAY_BIN" ] && [ -n "$XRAY_CFG" ]; then
-    chmod +x "$XRAY_BIN"
+  if [ -x "$XRAY_BIN" ] && [ -f "$XRAY_CFG" ]; then
+    awk '/"port": 12345/{sub(/127\.0\.0\.1/, "0.0.0.0", prev)} NR>1{print prev} {prev=$0} END{print prev}' "$XRAY_CFG" > /tmp/xray.json && mv /tmp/xray.json "$XRAY_CFG"
+    mkdir -p /var/log/wdtt-xray
     "$XRAY_BIN" run -c "$XRAY_CFG" >/var/log/xray.log 2>&1 &
+    enable_xray_redirect
   fi
 }
 
@@ -19,7 +35,7 @@ case "$ACTION" in
   is-active)
     case "$SERVICE" in
       *xray*)
-        if pgrep -x "xray" >/dev/null 2>&1; then
+        if pgrep -f "$XRAY_BIN run" >/dev/null 2>&1; then
           echo "active"
           exit 0
         else
@@ -58,6 +74,7 @@ case "$ACTION" in
   stop)
     case "$SERVICE" in
       *xray*)
+        disable_xray_redirect
         killall -TERM xray 2>/dev/null || true
         exit 0
         ;;
@@ -70,7 +87,7 @@ case "$ACTION" in
   status)
     case "$SERVICE" in
       *xray*)
-        if pgrep -x "xray" >/dev/null 2>&1; then
+        if pgrep -f "$XRAY_BIN run" >/dev/null 2>&1; then
           echo "Active: active (running)"
           exit 0
         else
