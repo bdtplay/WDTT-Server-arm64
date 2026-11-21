@@ -3,7 +3,7 @@
 CONFIG_DIR="/etc/wdtt"
 WDTT_SUBNET="10.66.66.0/24"
 RAW_SUBNET="10.70.0.0/16"
-mkdir -p "$CONFIG_DIR"
+mkdir -p "$CONFIG_DIR" /etc/wdtt-xray
 
 # Создание стартового пользователя при первом запуске на пустой базе
 if [ ! -f "$CONFIG_DIR/panel.db" ] && [ ! -f "$CONFIG_DIR/passwords.json" ]; then
@@ -25,7 +25,10 @@ sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1 || echo 1 > /proc/sys/net/ipv4/i
 
 # Перехват сигнала остановки контейнера (кнопка Stop в MikroTik)
 RUNNING=1
-trap 'RUNNING=0; killall -TERM wdtt-app 2>/dev/null; exit 0' TERM INT
+trap 'RUNNING=0; killall -TERM wdtt-app xray 2>/dev/null; exit 0' TERM INT
+
+# Автозапуск Xray при старте контейнера (если он установлен через панель)
+/usr/bin/systemctl start xray
 
 # Цикл работы и перезапуска сервера при нажатии "Перезапуск VPN" в панели
 while [ "$RUNNING" -eq 1 ]; do
