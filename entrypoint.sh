@@ -87,8 +87,10 @@ sysctl -w net.ipv4.conf.default.rp_filter=0 >/dev/null 2>&1 || true
 RUNNING=1
 trap 'RUNNING=0; killall -TERM wdtt-app xray 2>/dev/null; exit 0' TERM INT
 
-# Автозапуск Xray при старте контейнера
-/usr/bin/systemctl start xray
+# Автозапуск Xray при старте контейнера, только если он не был остановлен в панели
+if [ ! -f /etc/wdtt-xray/disabled ]; then
+    /usr/bin/systemctl start xray
+fi
 
 # Цикл работы и перезапуска сервера при нажатии "Перезапуск VPN" в панели
 while [ "$RUNNING" -eq 1 ]; do
