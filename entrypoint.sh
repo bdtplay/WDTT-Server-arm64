@@ -20,6 +20,63 @@ if [ ! -f "$CONFIG_DIR/panel.db" ] && [ ! -f "$CONFIG_DIR/passwords.json" ]; the
 EOM
 fi
 
+# Создание базового конфига Xray с прозрачным портом 12345 при первом запуске
+if [ ! -f /etc/wdtt-xray/config.json ]; then
+    cat << 'EOX' > /etc/wdtt-xray/config.json
+{
+  "api": {
+    "services": ["HandlerService", "LoggerService", "StatsService"],
+    "tag": "api"
+  },
+  "inbounds": [
+    {
+      "listen": "0.0.0.0",
+      "port": 12345,
+      "protocol": "dokodemo-door",
+      "settings": { "followRedirect": true, "network": "tcp" },
+      "sniffing": { "destOverride": ["http", "tls", "quic"], "enabled": true, "routeOnly": false },
+      "tag": "redirect-tcp"
+    },
+    {
+      "listen": "127.0.0.1",
+      "port": 10808,
+      "protocol": "socks",
+      "settings": { "auth": "noauth", "udp": true },
+      "tag": "socks-in"
+    },
+    {
+      "listen": "127.0.0.1",
+      "port": 62789,
+      "protocol": "tunnel",
+      "settings": { "rewriteAddress": "127.0.0.1" },
+      "tag": "api"
+    }
+  ],
+  "log": {
+    "access": "/var/log/wdtt-xray/access.log",
+    "error": "/var/log/wdtt-xray/error.log",
+    "loglevel": "warning"
+  },
+  "outbounds": [
+    { "protocol": "freedom", "tag": "direct" },
+    { "protocol": "blackhole", "tag": "blocked" }
+  ],
+  "policy": {
+    "levels": { "0": { "statsUserDownlink": true, "statsUserUplink": true } },
+    "system": { "statsInboundDownlink": true, "statsInboundUplink": true }
+  },
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      { "inboundTag": ["api"], "outboundTag": "api", "type": "field" },
+      { "ip": ["geoip:private"], "outboundTag": "blocked", "type": "field" }
+    ]
+  },
+  "stats": {}
+}
+EOX
+fi
+
 # Параметры ядра для форвардинга и прозрачного перенаправления в Xray
 sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1 || echo 1 > /proc/sys/net/ipv4/ip_forward 2>/dev/null || true
 sysctl -w net.ipv4.conf.all.route_localnet=1 >/dev/null 2>&1 || true
@@ -31,7 +88,7 @@ sysctl -w net.ipv4.conf.default.rp_filter=0 >/dev/null 2>&1 || true
 RUNNING=1
 trap 'RUNNING=0; killall -TERM wdtt-app xray 2>/dev/null; exit 0' TERM INT
 
-# Автозапуск Xray при старте контейнера (если установлен)
+# Автозапуск Xray при старте контейнера
 /usr/bin/systemctl start xray
 
 # Цикл работы и перезапуска сервера при нажатии "Перезапуск VPN" в панели
