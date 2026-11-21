@@ -5,6 +5,7 @@ SERVICE="$2"
 API="127.0.0.1:2861"
 XRAY_BIN="/usr/local/wdtt-xray/bin/xray"
 XRAY_CFG="/etc/wdtt-xray/config.json"
+XRAY_DISABLED_FLAG="/etc/wdtt-xray/disabled"
 
 enable_xray_redirect() {
   iptables -t nat -C PREROUTING -s 10.66.66.0/24 -p tcp -j REDIRECT --to-ports 12345 2>/dev/null || \
@@ -21,6 +22,7 @@ disable_xray_redirect() {
 }
 
 start_xray() {
+  rm -f "$XRAY_DISABLED_FLAG"
   killall -TERM xray 2>/dev/null || true
   sleep 1
   if [ -x "$XRAY_BIN" ] && [ -f "$XRAY_CFG" ]; then
@@ -74,6 +76,7 @@ case "$ACTION" in
   stop)
     case "$SERVICE" in
       *xray*)
+        touch "$XRAY_DISABLED_FLAG"
         disable_xray_redirect
         killall -TERM xray 2>/dev/null || true
         exit 0
