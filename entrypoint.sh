@@ -3,7 +3,7 @@
 CONFIG_DIR="/etc/wdtt"
 WDTT_SUBNET="10.66.66.0/24"
 RAW_SUBNET="10.70.0.0/16"
-mkdir -p "$CONFIG_DIR" /etc/wdtt-xray
+mkdir -p "$CONFIG_DIR" /etc/wdtt-xray /var/log/wdtt-xray
 
 # Создание стартового пользователя при первом запуске на пустой базе
 if [ ! -f "$CONFIG_DIR/panel.db" ] && [ ! -f "$CONFIG_DIR/passwords.json" ]; then
@@ -20,14 +20,18 @@ if [ ! -f "$CONFIG_DIR/panel.db" ] && [ ! -f "$CONFIG_DIR/passwords.json" ]; the
 EOM
 fi
 
-# Включение форвардинга IPv4-пакетов
+# Параметры ядра для форвардинга и прозрачного перенаправления в Xray
 sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1 || echo 1 > /proc/sys/net/ipv4/ip_forward 2>/dev/null || true
+sysctl -w net.ipv4.conf.all.route_localnet=1 >/dev/null 2>&1 || true
+sysctl -w net.ipv4.conf.default.route_localnet=1 >/dev/null 2>&1 || true
+sysctl -w net.ipv4.conf.all.rp_filter=0 >/dev/null 2>&1 || true
+sysctl -w net.ipv4.conf.default.rp_filter=0 >/dev/null 2>&1 || true
 
 # Перехват сигнала остановки контейнера (кнопка Stop в MikroTik)
 RUNNING=1
 trap 'RUNNING=0; killall -TERM wdtt-app xray 2>/dev/null; exit 0' TERM INT
 
-# Автозапуск Xray при старте контейнера (если он установлен через панель)
+# Автозапуск Xray при старте контейнера (если установлен)
 /usr/bin/systemctl start xray
 
 # Цикл работы и перезапуска сервера при нажатии "Перезапуск VPN" в панели
