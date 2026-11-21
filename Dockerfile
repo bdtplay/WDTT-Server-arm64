@@ -16,6 +16,7 @@ RUN apk add --no-cache curl iptables iproute2 ca-certificates unzip && \
     unzip -o /tmp/xray.zip -d /usr/local/wdtt-xray/bin/ && \
     chmod +x /usr/local/wdtt-xray/bin/xray && \
     ln -sf /usr/local/wdtt-xray/bin/xray /usr/local/bin/xray && \
+    ln -sf /usr/local/wdtt-xray/bin/xray /usr/local/wdtt-xray/bin/xray-linux-amd64 && \
     rm -rf /var/cache/apk/* /tmp/*
 
 COPY entrypoint.sh /entrypoint.sh
